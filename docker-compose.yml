@@ -3,7 +3,8 @@ services:
     image: eclipse-mosquitto:2
     container_name: broker
     ports:
-      - "1883:1883"
+      - "1883:1883"   # raw MQTT/TCP — devices + attack scripts
+      - "9001:9001"   # MQTT over WebSockets — browser frontend (MQTT.js)
     volumes:
       - ./broker/config/mosquitto.undefended.conf:/mosquitto/config/mosquitto.conf:ro
 

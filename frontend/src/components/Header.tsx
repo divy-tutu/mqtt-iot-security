@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { isLoggedIn, logout } from "@/lib/auth";
+import { ModeToggle } from "./ModeToggle";
 
 export const Header = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -29,19 +30,22 @@ export const Header = () => {
           <Link to="/" className="font-serif text-2xl md:text-3xl tracking-tight text-foreground hover:text-primary transition-colors">
             HomePulse
           </Link>
-          <button
-            onClick={() => {
-              if (loggedIn) {
-                logout();
-                navigate("/");
-              } else {
-                navigate("/login");
-              }
-            }}
-            className="text-xs font-medium tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground transition-colors link-underline"
-          >
-            {loggedIn ? "Log Out" : "Login"}
-          </button>
+          <div className="flex items-center gap-4 md:gap-6">
+            <ModeToggle />
+            <button
+              onClick={() => {
+                if (loggedIn) {
+                  logout();
+                  navigate("/");
+                } else {
+                  navigate("/login");
+                }
+              }}
+              className="text-xs font-medium tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground transition-colors link-underline"
+            >
+              {loggedIn ? "Log Out" : "Login"}
+            </button>
+          </div>
         </div>
       </nav>
     </header>

