@@ -4,3 +4,15 @@ captures/
 __pycache__/
 *.pyc
 broker/certs/
+
+# Phase-2 generated trust material (regenerate with ./setup-hardened.sh).
+# Private keys and hashed credentials must not be committed.
+secrets/
+broker/config/passwd
+
+# Append-only audit logs produced at runtime.
+audit/*.log
+
+# Frontend secure-build env: embeds broker creds + HMAC keys (testbed only).
+# Regenerate with ./setup-hardened.sh; see frontend/.env.example.
+frontend/.env.local

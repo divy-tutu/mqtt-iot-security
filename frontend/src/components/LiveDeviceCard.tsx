@@ -1,4 +1,5 @@
 import { type LucideIcon } from "lucide-react";
+import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface LiveDeviceCardProps {
@@ -11,6 +12,8 @@ interface LiveDeviceCardProps {
   lastTs?: number;
   /** render in an alarmed state (e.g. lock was tampered with) */
   alarmed?: boolean;
+  /** optional trust/verification badge shown in the header (secure build) */
+  badge?: ReactNode;
 }
 
 export const LiveDeviceCard = ({
@@ -21,6 +24,7 @@ export const LiveDeviceCard = ({
   value,
   lastTs,
   alarmed,
+  badge,
 }: LiveDeviceCardProps) => {
   const hasData = value !== null;
 
@@ -48,6 +52,8 @@ export const LiveDeviceCard = ({
           {hasData ? "Live" : "Waiting"}
         </span>
       </div>
+
+      {badge ? <div className="-mt-1">{badge}</div> : null}
 
       <div>
         <h3 className="font-serif text-2xl text-foreground">{name}</h3>

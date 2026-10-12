@@ -1,7 +1,7 @@
 import { Thermometer, Lock, Camera, AlertTriangle, Unlock, ShieldOff } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { LiveDeviceCard } from "@/components/LiveDeviceCard";
-import { SecureStub } from "@/components/SecureStub";
+import { SecureDashboard } from "@/components/SecureDashboard";
 import { useMode } from "@/lib/mode";
 import { useMqtt, type ConnStatus } from "@/hooks/useMqtt";
 import { TOPICS, MQTT_WS_URL } from "@/lib/mqtt-config";
@@ -173,7 +173,7 @@ const Dashboard = () => {
             </span>
           </div>
 
-          {mode === "insecure" ? <InsecureDashboard /> : <SecureStub />}
+          {mode === "insecure" ? <InsecureDashboard /> : <SecureDashboard />}
         </div>
       </section>
     </Layout>
