@@ -1,0 +1,7 @@
+# Shell scripts must keep LF endings, or a CRLF shebang breaks under bash/Git Bash.
+*.sh text eol=lf
+
+# Keep other text sources LF for consistent cross-platform diffs.
+*.py text eol=lf
+*.conf text eol=lf
+*.yml text eol=lf

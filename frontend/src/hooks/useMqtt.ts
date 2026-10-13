@@ -72,7 +72,7 @@ export function useMqtt(enabled: boolean): MqttState {
       setError(err?.message ?? "connection error");
     });
 
-    client.on("message", (topic, payloadBuf) => {
+    client.on("message", (topic, payloadBuf, packet) => {
       const payload = payloadBuf.toString();
       const ts = Date.now();
 
@@ -81,16 +81,28 @@ export function useMqtt(enabled: boolean): MqttState {
         [topic]: { value: payload, ts, count: (prev[topic]?.count ?? 0) + 1 },
       }));
 
-      // Surface lock-tampering events straight from the broker.
+      // Distinguish the device's own state from a live intrusion using the MQTT
+      // RETAIN flag. Per spec the broker sets retain=1 only when replaying the
+      // stored message to a NEW subscription (our baseline, and any re-delivery
+      // after a reconnect); a live publish forwarded to an already-subscribed
+      // client arrives with retain=0. Flagging only retain=0 writes removes the
+      // false "forged" alarm on reconnect while still catching real injections.
+      const isRetained = packet?.retain === true;
+
       if (topic === TOPICS.lockState) {
-        if (!sawLockBaseline.current) {
-          sawLockBaseline.current = true;
-          setLockEvents((prev) =>
-            [{ ts, topic, payload, kind: "baseline" as const }, ...prev].slice(0, MAX_EVENTS)
-          );
+        if (isRetained) {
+          // Stored state replayed on (re)subscribe — record the baseline once,
+          // ignore later re-deliveries so reconnects don't raise a false alarm.
+          if (!sawLockBaseline.current) {
+            sawLockBaseline.current = true;
+            setLockEvents((prev) =>
+              [{ ts, topic, payload, kind: "baseline" as const }, ...prev].slice(0, MAX_EVENTS)
+            );
+          }
         } else {
-          // A new state after the retained baseline — in this testbed only the
-          // attacker republishes lock/state, so flag it as forged.
+          // A live write to lock/state: nothing legitimate republishes it in
+          // this testbed, so this is the attacker forging state.
+          sawLockBaseline.current = true;
           setLockEvents((prev) =>
             [{ ts, topic, payload, kind: "forged-state" as const }, ...prev].slice(0, MAX_EVENTS)
           );
