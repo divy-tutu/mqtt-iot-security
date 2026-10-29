@@ -43,14 +43,15 @@ const Index = () => {
               <span className="italic font-normal">Listens</span>
             </h1>
             <p className="text-base md:text-lg text-white/80 mb-10 leading-relaxed max-w-lg">
-              Control your lights, appliances and devices from one calm, simple place.
+              Your devices, your space, your peace of mind. Stay connected to home from one calm, simple place.
             </p>
             <Button asChild size="lg" className="rounded-none px-10 py-6 text-sm tracking-[0.15em] uppercase btn-premium">
-              <Link to="/login">
-                Login
+              <Link to="/dashboard">
+                Enter Your Home
                 <ArrowRight className="ml-3 w-4 h-4" />
               </Link>
             </Button>
+            <Link to="/lab" className="inline-flex items-center gap-2 text-white/90 text-sm ml-0 sm:ml-7 mt-5 sm:mt-0 hover:text-white transition-colors">Explore the security lab <ArrowRight size={16} /></Link>
           </motion.div>
 
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
@@ -77,7 +78,7 @@ const Index = () => {
                 className="group"
               >
                 <div className="aspect-[4/3] overflow-hidden mb-5">
-                  <img src={a.image} alt={a.name} className="w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-105" />
+                  <img src={a.image} alt={a.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
                 </div>
                 <h3 className="font-serif text-2xl text-foreground mb-2">{a.name}</h3>
                 <p className="text-muted-foreground">{a.description}</p>

@@ -1,0 +1,10 @@
+# Deliberate configuration defect: every enrolled device trusts the entire home.
+user sensor
+topic readwrite home/#
+user camera
+topic readwrite home/#
+user lock
+topic readwrite home/#
+user operator
+topic readwrite home/#
+

@@ -10,8 +10,12 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "127.0.0.1",
     port: 8080,
+    proxy: {
+      "/api/baseline": { target: "http://127.0.0.1:8081", rewrite: (p) => p.replace(/^\/api\/baseline/, "") },
+      "/api/hardened": { target: "http://127.0.0.1:8082", rewrite: (p) => p.replace(/^\/api\/hardened/, "") },
+    },
     hmr: {
       overlay: false,
     },

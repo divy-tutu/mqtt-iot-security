@@ -1,0 +1,24 @@
+[
+  {
+    "accepted": true,
+    "actions": 25,
+    "command_id": "c404c528e44646a3acba79f5346d0a38",
+    "n": 67,
+    "payload_sha256": "bce9672c9cf45e2b832f3f9b791778fe1f1b16fcb6e5070e46a643f6858fd57c",
+    "previous": "b320776d7e455a356b13d66a64fd9e4ee353c4b3956692947b9e5faeac5852f1",
+    "reason": "accepted",
+    "state": "UNLOCKED",
+    "ts": 1793126184.3131242
+  },
+  {
+    "accepted": false,
+    "actions": 25,
+    "command_id": "c404c528e44646a3acba79f5346d0a38",
+    "n": 68,
+    "payload_sha256": "bce9672c9cf45e2b832f3f9b791778fe1f1b16fcb6e5070e46a643f6858fd57c",
+    "previous": "cf6c0905aea6aa2ee0623b9e26c507fd057aa7172646185e720a3a9ce3caf506",
+    "reason": "replay",
+    "state": "UNLOCKED",
+    "ts": 1793126189.5483027
+  }
+]

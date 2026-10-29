@@ -1,30 +1,15 @@
-# --- HARDENED broker: per-topic Access Control List (Phase 2, Control 1) ---
-#
-# Enforces least privilege: each device may touch ONLY its own topics, in the
-# correct direction. This is what defeats the Phase-1 masquerade / spoofing /
-# modification attacks at the broker layer — a client authenticated as the
-# camera can no longer forge home/frontdoor/lock/state, and no device can
-# subscribe to the whole "home/#" tree the way an anonymous client could.
-#
-# "write" = publish, "read" = subscribe. Order: a per-user block applies to
-# that user until the next "user" line. No matching rule => denied.
-
-# Temperature sensor: may only publish its own reading.
-user sensor-livingroom
+# Default deny. Device accounts cannot write commands or other devices' state.
+user sensor
 topic write home/livingroom/temperature
-
-# Door lock: publishes its state, and reads commands addressed to it.
-user lock-frontdoor
-topic write home/frontdoor/lock/state
-topic read home/frontdoor/lock/cmd
-
-# Camera: may only publish its own status.
-user camera-frontdoor
+user camera
 topic write home/frontdoor/camera/status
-
-# Dashboard (the signed-in human operator): reads the whole home tree for the
-# live view, and may send lock commands. It cannot publish device state itself,
-# so it cannot spoof a sensor/lock/camera.
-user dashboard
-topic read home/#
+user lock
+topic read home/frontdoor/lock/cmd
+topic write home/frontdoor/lock/state
+topic write home/frontdoor/lock/events
+user operator
+topic read home/livingroom/temperature
+topic read home/frontdoor/camera/status
+topic read home/frontdoor/lock/state
+topic read home/frontdoor/lock/events
 topic write home/frontdoor/lock/cmd

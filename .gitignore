@@ -13,6 +13,11 @@ broker/config/passwd
 # Append-only audit logs produced at runtime.
 audit/*.log
 
-# Frontend secure-build env: embeds broker creds + HMAC keys (testbed only).
-# Regenerate with ./setup-hardened.sh; see frontend/.env.example.
+# Legacy frontend environment files are private and unused by v2.
+# Never ship private material in a browser bundle.
 frontend/.env.local
+
+runtime/
+results/
+frontend/node_modules/
+frontend/dist/

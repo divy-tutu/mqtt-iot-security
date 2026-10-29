@@ -1,0 +1,13 @@
+{
+  "accepted": true,
+  "actions": 27,
+  "command_id": "42bdf16ea345454382cf44929b6402cf",
+  "hash": "6eb4cf5b85d0ee6df575208f86095e2b9e20e8e0016b039e363bc6fd33f7001e",
+  "n": 70,
+  "payload_sha256": "f24c26e7944a23eaf615c666df9df7bc6507e5d6025ab4ff4ecfecb080b6e895",
+  "previous": "c0b4cfdbe0847ebe9be0b3999fe3c22c71a143ba916e0dbeb76d170841862d23",
+  "reason": "accepted",
+  "state": "UNLOCKED",
+  "ts": 1793126433.9494753,
+  "latency_ms": 66.59621500011781
+}

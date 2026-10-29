@@ -1,0 +1,8 @@
+# Teaching-only: retain TLS and ACLs; disable lock application controls.
+services:
+  hardened-lock:
+    environment:
+      COMMAND_POLICY: broker-only
+  hardened-gateway:
+    environment:
+      COMMAND_POLICY: broker-only

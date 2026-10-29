@@ -1,33 +1,226 @@
+name: mqtt-security-lab
+x-app: &app
+  image: mqtt-security-lab:local
+  build: ./lab
+  restart: unless-stopped
+  read_only: true
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 64
+  mem_limit: 192m
+  cpus: 0.50
+
 services:
-  broker:
-    image: eclipse-mosquitto:2
-    container_name: broker
-    ports:
-      - "1883:1883"   # raw MQTT/TCP — devices + attack scripts
-      - "9001:9001"   # MQTT over WebSockets — browser frontend (MQTT.js)
+  baseline-broker:
+    image: eclipse-mosquitto:2.0.22
+    user: "1883:1883"
+    command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.baseline.conf"]
+    ports: ["127.0.0.1:1883:1883"]
     volumes:
-      - ./broker/config/mosquitto.undefended.conf:/mosquitto/config/mosquitto.conf:ro
-
-  sensor:
-    build: ./devices
-    container_name: sensor
-    command: python sensor.py
+      - ./broker/config:/mosquitto/config:ro
+      - ./runtime/baseline-broker:/credentials:ro
+      - ./runtime/public:/public:ro
+    networks: [baseline]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    cpus: 0.50
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+  baseline-sensor:
+    <<: *app
+    command: ["python", "device.py"]
+    environment:
+      PROFILE: baseline
+      DEVICE: sensor
+      MQTT_HOST: baseline-broker
     depends_on:
-      - broker
-    restart: unless-stopped
+      baseline-broker: {condition: service_healthy}
+    networks: [baseline]
+    volumes:
+      - ./runtime/sensor:/identity:ro
+      - ./runtime/public:/public:ro
+      - baseline-sensor-data:/data
 
-  lock:
-    build: ./devices
-    container_name: lock
-    command: python lock.py
+  baseline-camera:
+    <<: *app
+    command: ["python", "device.py"]
+    environment:
+      PROFILE: baseline
+      DEVICE: camera
+      MQTT_HOST: baseline-broker
     depends_on:
-      - broker
-    restart: unless-stopped
+      baseline-broker: {condition: service_healthy}
+    networks: [baseline]
+    volumes:
+      - ./runtime/camera:/identity:ro
+      - ./runtime/public:/public:ro
+      - baseline-camera-data:/data
 
-  camera:
-    build: ./devices
-    container_name: camera
-    command: python camera.py
+  baseline-lock:
+    <<: *app
+    command: ["python", "device.py"]
+    environment:
+      PROFILE: baseline
+      DEVICE: lock
+      MQTT_HOST: baseline-broker
     depends_on:
-      - broker
-    restart: unless-stopped
+      baseline-broker: {condition: service_healthy}
+    networks: [baseline]
+    volumes:
+      - ./runtime/lock:/identity:ro
+      - ./runtime/public:/public:ro
+      - baseline-lock-data:/data
+
+  baseline-gateway:
+    <<: *app
+    command: ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "gateway:app"]
+    environment:
+      PROFILE: baseline
+      DEVICE: gateway
+      MQTT_HOST: baseline-broker
+    depends_on:
+      baseline-broker: {condition: service_healthy}
+    networks: [baseline, web]
+    volumes:
+      - ./runtime/operator:/identity:ro
+      - ./runtime/public:/public:ro
+      - ./runtime/gateway-auth:/auth:ro
+      - ./results:/results:ro
+
+    ports: ["127.0.0.1:8081:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+  hardened-broker:
+    image: eclipse-mosquitto:2.0.22
+    user: "1883:1883"
+    command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.hardened.conf"]
+    ports: ["127.0.0.1:8883:8883"]
+    volumes:
+      - ./broker/config:/mosquitto/config:ro
+      - ./runtime/hardened-broker:/credentials:ro
+      - ./runtime/public:/public:ro
+      - ./runtime/tls:/tls:ro
+    networks: [hardened]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    cpus: 0.50
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+  hardened-sensor:
+    <<: *app
+    command: ["python", "device.py"]
+    environment:
+      PROFILE: hardened
+      DEVICE: sensor
+      MQTT_HOST: hardened-broker
+    depends_on:
+      hardened-broker: {condition: service_healthy}
+    networks: [hardened]
+    volumes:
+      - ./runtime/sensor:/identity:ro
+      - ./runtime/public:/public:ro
+      - hardened-sensor-data:/data
+
+  hardened-camera:
+    <<: *app
+    command: ["python", "device.py"]
+    environment:
+      PROFILE: hardened
+      DEVICE: camera
+      MQTT_HOST: hardened-broker
+    depends_on:
+      hardened-broker: {condition: service_healthy}
+    networks: [hardened]
+    volumes:
+      - ./runtime/camera:/identity:ro
+      - ./runtime/public:/public:ro
+      - hardened-camera-data:/data
+
+  hardened-lock:
+    <<: *app
+    command: ["python", "device.py"]
+    environment:
+      PROFILE: hardened
+      DEVICE: lock
+      MQTT_HOST: hardened-broker
+    depends_on:
+      hardened-broker: {condition: service_healthy}
+    networks: [hardened]
+    volumes:
+      - ./runtime/lock:/identity:ro
+      - ./runtime/public:/public:ro
+      - hardened-lock-data:/data
+
+  hardened-gateway:
+    <<: *app
+    command: ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "gateway:app"]
+    environment:
+      PROFILE: hardened
+      DEVICE: gateway
+      MQTT_HOST: hardened-broker
+    depends_on:
+      hardened-broker: {condition: service_healthy}
+    networks: [hardened, web]
+    volumes:
+      - ./runtime/operator:/identity:ro
+      - ./runtime/public:/public:ro
+      - ./runtime/gateway-auth:/auth:ro
+      - ./results:/results:ro
+
+    ports: ["127.0.0.1:8082:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+  dashboard:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8443:8443"
+    volumes:
+      - ./runtime/tls:/tls:ro
+    networks: [web]
+    depends_on:
+      baseline-gateway: {condition: service_healthy}
+      hardened-gateway: {condition: service_healthy}
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+  experiment:
+    <<: *app
+    profiles: [test]
+    command: ["python", "experiment.py", "--repeats", "3"]
+    restart: "no"
+    user: "0:0"
+    networks: [baseline, hardened]
+    volumes:
+      - ./runtime:/runtime:ro
+      - ./results:/results
+networks:
+  baseline: {internal: true}
+  hardened: {internal: true}
+  web: {}
+volumes:
+  baseline-sensor-data:
+  baseline-camera-data:
+  baseline-lock-data:
+  hardened-sensor-data:
+  hardened-camera-data:
+  hardened-lock-data:

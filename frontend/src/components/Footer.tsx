@@ -1,12 +1,10 @@
+import { Link } from "react-router-dom";
 export const Footer = () => (
-  <footer className="border-t border-border py-10">
-    <div className="container-full">
-      <div className="relative flex flex-col md:flex-row items-center justify-center gap-3 text-sm text-muted-foreground">
-        <span className="text-center">MQTT Smart Home: Secure by Design, Not by Default</span>
-        <span className="md:absolute md:right-0 md:top-1/2 md:-translate-y-1/2 whitespace-nowrap">
-          HomePulse@2026
-        </span>
-      </div>
+  <footer className="site-footer">
+    <div className="container-full flex flex-wrap items-center justify-between gap-4">
+      <Link to="/" className="font-serif text-2xl">HomePulse<span className="text-primary">.</span></Link>
+      <p className="text-xs text-muted-foreground">Connected living. Security you can examine.</p>
+      <p className="text-xs text-muted-foreground">Information Security Lab · 2026</p>
     </div>
   </footer>
 );

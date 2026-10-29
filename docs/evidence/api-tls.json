@@ -1,0 +1,102 @@
+[
+  {
+    "profile": "baseline",
+    "check": "unauthenticated-read",
+    "passed": true
+  },
+  {
+    "profile": "baseline",
+    "check": "unauthenticated-command",
+    "passed": true
+  },
+  {
+    "profile": "baseline",
+    "check": "wrong-login",
+    "passed": true
+  },
+  {
+    "profile": "baseline",
+    "check": "valid-login",
+    "passed": true
+  },
+  {
+    "profile": "baseline",
+    "check": "session-read",
+    "passed": true
+  },
+  {
+    "profile": "baseline",
+    "check": "cross-site-command",
+    "passed": true
+  },
+  {
+    "profile": "baseline",
+    "check": "invalid-command",
+    "passed": true
+  },
+  {
+    "profile": "baseline",
+    "check": "logout",
+    "passed": true
+  },
+  {
+    "profile": "baseline",
+    "check": "logged-out-read",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "unauthenticated-read",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "unauthenticated-command",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "wrong-login",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "valid-login",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "session-read",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "cross-site-command",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "invalid-command",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "logout",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "logged-out-read",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "untrusted-ca",
+    "passed": true
+  },
+  {
+    "profile": "hardened",
+    "check": "wrong-hostname",
+    "passed": true
+  }
+]
