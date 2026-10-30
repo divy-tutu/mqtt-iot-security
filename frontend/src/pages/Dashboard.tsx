@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ArrowRight, ArrowUpRight, Check, Download, KeyRound, Lock, ShieldAlert, ShieldCheck, Thermometer, Camera, Unlock } from "lucide-react";
+import { Activity, ArrowRight, ArrowUpRight, Check, Download, Fingerprint, KeyRound, Lock, ShieldAlert, ShieldCheck, Thermometer, Camera, Unlock, VideoOff } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useMode } from "@/lib/mode";
 import { useLab, type DeviceRecord, type Report } from "@/hooks/useLab";
+import { useWebcam } from "@/hooks/useWebcam";
 import thermostatImage from "@/assets/thermostat.jpg";
 import cameraImage from "@/assets/security-camera.jpg";
 
@@ -18,19 +19,36 @@ const readable = (value?: string) => value ? value.replace(/[-_]/g, " ") : "Awai
 function DeviceCard({ index, item, connected, technical }: { index: number; item?: DeviceRecord; connected: boolean; technical: boolean }) {
   const device = devices[index];
   const Icon = device.icon;
+  const isCamera = index === 2;
+  // Always call the hook (hooks can't be conditional); it only touches the
+  // real webcam once turnOn() is actually invoked, which only happens from
+  // the toggle button rendered on the camera card below.
+  const webcam = useWebcam();
   const age = item ? Math.max(0, Date.now() / 1000 - item.received) : Infinity;
   const live = connected && age <= 6;
   const value = !item ? "—" : index === 0 ? `${item.data.temperature}°` : index === 1 ? item.data.state === "LOCKED" ? "Locked" : item.data.state === "UNLOCKED" ? "Unlocked" : "Unknown" : item.data.status === "ONLINE" ? "Online" : item.data.status;
   return <article className="home-device-card">
     <div className={`device-visual ${device.image ? "" : "lock-visual"}`}>
-      {device.image ? <img src={device.image} alt={device.description} /> : <div className="door-illustration" aria-hidden="true"><div className="door-panel"><div className="lock-hardware"><span className="lock-led" /><Lock size={26} strokeWidth={1.2} /><div className="door-handle" /></div></div></div>}
+      {isCamera && webcam.active
+        ? <video ref={webcam.videoRef} autoPlay playsInline muted aria-label="Your live webcam feed" />
+        : device.image ? <img src={device.image} alt={device.description} /> : <div className="door-illustration" aria-hidden="true"><div className="door-panel"><div className="lock-hardware"><span className="lock-led" /><Lock size={26} strokeWidth={1.2} /><div className="door-handle" /></div></div></div>}
       <span className={`device-status ${live ? "is-live" : ""}`}><span />{live ? "Live" : item ? "Stale" : "Waiting"}</span>
       <span className="device-visual-label"><Icon size={14} />{device.description}</span>
+      {isCamera && (
+        <button
+          type="button"
+          className="webcam-toggle-button"
+          onClick={() => void (webcam.active ? webcam.turnOff() : webcam.turnOn())}
+        >
+          {webcam.active ? <><VideoOff size={13} /> Turn off</> : <><Camera size={13} /> Turn on</>}
+        </button>
+      )}
     </div>
     <div className="device-information">
       <div className="flex items-end justify-between gap-3"><div><p className="eyebrow">{device.name}</p><p className="device-value">{value}<span>{item && index === 0 ? "C" : ""}</span></p></div><Icon size={22} strokeWidth={1.3} className="text-muted-foreground mb-3" /></div>
       <div className="device-verification">{item?.verified ? <><ShieldCheck size={14} /> Verified reading</> : <><ShieldAlert size={14} /> {item ? "Unverified reading" : "No reading yet"}</>}
         <span>{Number.isFinite(age) ? `${Math.round(age)}s ago` : ""}</span></div>
+      {isCamera && webcam.error && <p className="device-webcam-error">{webcam.error}</p>}
       {technical && <div className="device-technical"><code>{device.topic}</code>{index === 1 && <p>Executed actions: {item?.data.actions ?? "—"}</p>}</div>}
     </div>
   </article>;
@@ -67,6 +85,8 @@ export default function Dashboard({ view = "home" }: { view?: "home" | "lab" }) 
   const { snapshot, report, session, error, networkError, busy, pending } = lab;
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
+  const [hasPasskey, setHasPasskey] = useState(false);
+  const [passkeySetupDone, setPasskeySetupDone] = useState(false);
   const technical = view === "lab";
   const secure = profile === "hardened";
   const decision = snapshot?.events.find(event => event.data.command_id === pending);
@@ -78,6 +98,21 @@ export default function Dashboard({ view = "home" }: { view?: "home" | "lab" }) 
     event.preventDefault();
     if (await lab.login(username.trim(), password)) setPassword("");
   }
+  async function submitPasskey() {
+    await lab.loginWithPasskey();
+  }
+  async function setUpPasskey() {
+    if (await lab.registerPasskey()) {
+      setHasPasskey(true);
+      setPasskeySetupDone(true);
+    }
+  }
+  useEffect(() => {
+    let active = true;
+    void lab.webauthnStatus().then((registered) => { if (active) setHasPasskey(registered); });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, signedIn]);
 
   return <Layout>
     <section className="workspace container-full">
@@ -103,11 +138,31 @@ export default function Dashboard({ view = "home" }: { view?: "home" | "lab" }) 
           <label htmlFor="username">Username<input id="username" value={username} onChange={event => setUsername(event.target.value)} autoComplete="username" required /></label>
           <label htmlFor="password">Password<input id="password" type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" required /></label>
           <button className="primary-button w-full" disabled={busy}>{busy ? "Signing in…" : "Enter your home"}<ArrowRight size={17} /></button>
+          {hasPasskey && (
+            <button type="button" className="secondary-button w-full" disabled={busy} onClick={() => void submitPasskey()}>
+              <Fingerprint size={16} /> Sign in with passkey
+            </button>
+          )}
           <details className="credentials-help"><summary>Using the local lab?</summary><p>Your generated operator login is in <code>runtime/login.txt</code>. Each profile has its own authenticated session.</p></details>
         </form>
       </section> : <>
         <div className="connection-bar"><span className={`connection-indicator ${connected ? "connected" : ""}`}><span />{connected ? "Connected to your home" : "Reconnecting to your home"}</span>
           <span className="connection-caption">3 simulated devices · {profileTitle} profile</span><button className="quiet-button" disabled={busy} onClick={() => void lab.logout()}>Sign out <ArrowUpRight size={14} /></button></div>
+
+        {!passkeySetupDone && (
+          <p role="status" className="notice notice-warning">
+            <Fingerprint size={15} />{" "}
+            {hasPasskey
+              ? "Add another passkey for this profile — e.g. your phone's face unlock, via \"Save another way\" → \"Use a phone, tablet or security key\"."
+              : "Sign in faster next time — set up a passkey (Windows Hello face/fingerprint, or scan a QR with your phone)."}{" "}
+            <button type="button" className="text-link" disabled={busy} onClick={() => void setUpPasskey()}>
+              {hasPasskey ? "Add another" : "Set up now"}
+            </button>
+          </p>
+        )}
+        {passkeySetupDone && (
+          <p role="status" className="notice notice-warning"><Check size={15} /> Passkey set up for this profile — use "Sign in with passkey" next time.</p>
+        )}
 
         {technical && <section className={`policy-banner ${secure ? "protected" : "baseline"}`}>
           {secure ? <ShieldCheck size={24} strokeWidth={1.5} /> : <ShieldAlert size={24} strokeWidth={1.5} />}

@@ -93,6 +93,7 @@ services:
       - ./runtime/public:/public:ro
       - ./runtime/gateway-auth:/auth:ro
       - ./results:/results:ro
+      - baseline-gateway-data:/data
 
     ports: ["127.0.0.1:8081:8000"]
     healthcheck:
@@ -182,6 +183,7 @@ services:
       - ./runtime/public:/public:ro
       - ./runtime/gateway-auth:/auth:ro
       - ./results:/results:ro
+      - hardened-gateway-data:/data
 
     ports: ["127.0.0.1:8082:8000"]
     healthcheck:
@@ -192,8 +194,8 @@ services:
   dashboard:
     build: ./frontend
     ports:
-      - "127.0.0.1:8080:8080"
-      - "127.0.0.1:8443:8443"
+      - "8080:8080"
+      - "8443:8443"
     volumes:
       - ./runtime/tls:/tls:ro
     networks: [web]
@@ -221,6 +223,8 @@ volumes:
   baseline-sensor-data:
   baseline-camera-data:
   baseline-lock-data:
+  baseline-gateway-data:
   hardened-sensor-data:
   hardened-camera-data:
   hardened-lock-data:
+  hardened-gateway-data:

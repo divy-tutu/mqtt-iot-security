@@ -1,4 +1,9 @@
 paho-mqtt==2.1.0
-cryptography==46.0.3
+# Bumped from 46.0.3: webauthn==3.0.1 (added below) requires cryptography
+# >=49.0.0. Verified their x509/CA/Ed25519 certificate generation in
+# provision.py and security.py (signing, InvalidSignature checks) still
+# work unchanged against 50.0.1 before making this change.
+cryptography==50.0.1
 Flask==3.1.2
 gunicorn==23.0.0
+webauthn==3.0.1
