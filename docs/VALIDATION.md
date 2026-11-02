@@ -1,5 +1,29 @@
 # Validation record
 
+## Multi-account browser authentication
+
+Implemented persistent per-profile user databases, administrator/operator roles,
+an administrator-only account page, salted scrypt for new hardened accounts and
+salted PBKDF2 with an explicitly selected two-character hint in baseline. No full
+browser passwords are stored. Existing bootstrap hashes upgrade on password login.
+New setup prompts for the bootstrap password and does not write it to login.txt;
+the old local plaintext bootstrap note was replaced with non-secret instructions.
+
+Validation: six account/passkey unit tests passed, including equal-password salt
+uniqueness, absence of full plaintext, baseline hint policy, legacy passkey owner
+migration, per-account passkey identity and single-use/expiring challenges.
+Thirty live API assertions passed across the two profiles, including administrator
+creation, operator denials, hash/hint storage, no plaintext in the database/API,
+and logout. Polling no longer refreshes session cookies, preventing an in-flight
+poll response from restoring a cookie immediately after logout. TypeScript and
+the production frontend build passed. Browser sign-in and the hardened account
+page were verified. A physical face/fingerprint ceremony was not automated.
+
+Stored password hashes are visible only to administrators as an educational lab
+feature. That permission does not mean weak passwords cannot be guessed offline;
+production admin interfaces should avoid exporting password verifiers. Ordinary
+operators receive no hashes or hints through their account/snapshot permissions.
+
 ## Expanded synopsis-aligned demonstration validated 2 November 2026
 
 Final run: `results/captures/20261102T134009Z-6a81f260/report.json`.

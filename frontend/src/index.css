@@ -437,6 +437,8 @@
 .text-link:hover { text-decoration: underline; text-underline-offset: 4px; }
 .connection-bar { display: flex; align-items: center; gap: 16px; padding: 15px 0; border-top: 1px solid hsl(var(--border)); border-bottom: 1px solid hsl(var(--border)); margin-bottom: 34px; font-size: 12px; }
 .connection-bar .quiet-button { margin-left: auto; }
+.account-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.account-toolbar .panel-description { margin: 0; }
 .connection-indicator { display: inline-flex; align-items: center; gap: 8px; color: #8a6b3e; }
 .connection-indicator > span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .connection-indicator.connected { color: #4b6a4f; }

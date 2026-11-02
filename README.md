@@ -12,7 +12,39 @@ Install/start Docker Desktop with Linux containers, then run from this directory
 ./setup-lab.ps1
 ~~~
 
-Open [HomePulse](https://localhost:8443/) for the landing page, [My Home](https://localhost:8443/dashboard) for live devices and door controls, or [Security Lab](https://localhost:8443/lab) for signed device decisions and measured comparisons. Plain HTTP on port 8080 redirects to HTTPS. Read `runtime/login.txt` for the generated admin credentials. Sign in separately to Baseline and Hardened; navigation between My Home and Security Lab shares the selected profile and its server session.
+Open [HomePulse](https://localhost:8443/) for the landing page, [My Home](https://localhost:8443/dashboard) for live devices and door controls, or [Security Lab](https://localhost:8443/lab) for signed device decisions and measured comparisons. Plain HTTP on port 8080 redirects to HTTPS. On first setup, choose the initial admin password when prompted; passwords are not written to `runtime/login.txt`. Sign in separately to Baseline and Hardened; navigation between My Home and Security Lab shares the selected profile and its server session.
+
+### Multiple accounts and password storage
+
+Administrators can open [People and access](https://localhost:8443/users) from
+the dashboard to list accounts, inspect their stored hashes, and create operators
+or additional administrators. Accounts persist in each gateway's Docker data
+volume. Creating an account in one profile does not create it in the other.
+Only administrators can access the user-management API and full access log;
+ordinary operators cannot retrieve password hashes or grant themselves admin access.
+
+Hardened browser passwords use scrypt (`N=32768, r=8, p=3`) with a fresh random
+16-character salt. Baseline uses salted PBKDF2-HMAC-SHA256 (600,000 iterations)
+and deliberately stores a two-character password suffix as a weak legacy support
+hint. Its eight-character mask is fixed, not derived from password length.
+The hardened database has no hint or password-length field. The random salt makes
+identical passwords produce different hashes; varying hash length is not a security
+feature. Neither profile stores full browser passwords or reversible ciphertext.
+Admin hash display is an educational feature; a production admin page should not
+expose password verifiers unnecessarily. Hashing does not make weak passwords
+immune to guessing if a verifier is stolen.
+
+Existing single-admin accounts and passkeys migrate in place. New passkeys belong
+to the registering account and sign in as that user, not as a universal admin.
+Challenges are stored server-side, expire after two minutes, and are consumed once.
+Face/fingerprint recognition remains within Windows Hello/the authenticator;
+the app stores credential public keys, not biometric data.
+
+For API checks, supply `LAB_TEST_USERNAME` and `LAB_TEST_PASSWORD` to the test
+process or use its interactive password prompt. Credentials should not be committed.
+Machine MQTT client credentials remain necessary in their restricted identity
+mounts; this hash-only browser-account change does not remove client secrets or
+plaintext credentials from intentionally captured baseline MQTT traffic.
 
 The HTTPS certificate is issued by the lab CA at `runtime/public/ca.crt` and is valid for `localhost` and `127.0.0.1`. Trust that CA in the current user's browser/OS certificate store to remove the local-CA warning. Do this only on the lab machine; the CA exists solely for this project.
 

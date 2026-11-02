@@ -3,6 +3,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import Users from './pages/Users';
 
 const App = () => (
   <BrowserRouter>
@@ -11,6 +12,7 @@ const App = () => (
       <Route path="/" element={<Index />} />
       <Route path="/dashboard" element={<Dashboard key="home" view="home" />} />
       <Route path="/lab" element={<Dashboard key="lab" view="lab" />} />
+      <Route path="/users" element={<Users />} />
       <Route path="/login" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

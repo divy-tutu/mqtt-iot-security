@@ -4,6 +4,7 @@ import ipaddress
 import json
 import os
 import secrets
+import sys
 from pathlib import Path
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -18,6 +19,13 @@ if (root / "provisioned").exists():
     raise SystemExit(0)
 if any(root.iterdir()):
     raise SystemExit("Incomplete runtime exists. Inspect it before moving it aside and provisioning again.")
+if '--prompt' in sys.argv:
+    import getpass
+    password = getpass.getpass('Choose the initial admin password (8-128 characters): ')
+else:
+    password = json.load(sys.stdin).get('password')
+if not isinstance(password, str) or not 8 <= len(password) <= 128:
+    raise SystemExit('Provide an 8–128 character bootstrap admin password through stdin.')
 for directory in ("public", "tls", "ca-private", "baseline-broker", "hardened-broker", "gateway-auth"):
     (root / directory).mkdir()
 for who in ("sensor", "camera", "lock", "operator"):
@@ -49,13 +57,12 @@ server = (x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(N
 (root/"tls"/"server.crt").write_bytes(server.public_bytes(serialization.Encoding.PEM))
 for path,key in ((root/"tls"/"server.key",server_key),(root/"ca-private"/"ca.key",ca_key)):
     path.write_bytes(key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption()))
-password = secrets.token_urlsafe(18)
-(root/"gateway-auth"/"auth.json").write_text(json.dumps({"user":"admin","password_hash":generate_password_hash(password),"session_key":secrets.token_hex(32)}))
-(root/"login.txt").write_text(f"Username: admin\nPassword: {password}\n")
+(root/"gateway-auth"/"auth.json").write_text(json.dumps({"user":"admin","password_hash":generate_password_hash(password, method='scrypt:32768:8:3', salt_length=16),"session_key":secrets.token_hex(32)}))
+(root/"login.txt").write_text('Passwords are not saved in this file. Use the admin password entered during setup, or an account created by your administrator.\n')
 (root/"provisioned").write_text("v2\n")
 # Containers run as non-root, receiving only explicitly selected read-only mounts.
 # Host file ACLs are still the host owner's responsibility.
 for path in root.rglob("*"):
     os.chmod(path, 0o755 if path.is_dir() else 0o444)
-print("Provisioned. Operator login is in runtime/login.txt. No private keys are browser assets.")
+print("Provisioned. Use the admin password entered during setup. No plaintext browser passwords saved.")
 

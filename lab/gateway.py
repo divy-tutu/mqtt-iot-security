@@ -5,8 +5,8 @@ import os
 import threading
 import time
 from pathlib import Path
-from flask import Flask, jsonify, request, session
-from werkzeug.security import check_password_hash
+from flask import Flask, jsonify, request, session, g
+from users import UserStore
 from security import CMD, EVENT, TOPICS, authenticate, decode, sign
 from transport import client, start, publish
 import access_log
@@ -16,10 +16,12 @@ from webauthn import options_to_json
 app = Flask(__name__)
 auth = json.loads(Path("/auth/auth.json").read_text())
 app.config.update(SECRET_KEY=auth["session_key"], SESSION_COOKIE_HTTPONLY=True,
+                  SESSION_REFRESH_EACH_REQUEST=False,
                   SESSION_COOKIE_SAMESITE="Strict", SESSION_COOKIE_NAME="mqtt_"+os.environ["PROFILE"],
                   SESSION_COOKIE_PATH="/", MAX_CONTENT_LENGTH=4096,
                   PERMANENT_SESSION_LIFETIME=1800)
 profile = os.environ["PROFILE"]
+users = UserStore('/data/users.sqlite', profile, bootstrap=auth)
 guard = threading.Lock()
 messages, events = {}, collections.deque(maxlen=100)
 login_attempts = collections.deque(maxlen=100)
@@ -73,12 +75,36 @@ def protect():
     # but register/* stays protected below since only an already-logged-in
     # operator should be able to add a new passkey.
     public_paths = ("/health", "/login", "/webauthn/status", "/webauthn/login/options", "/webauthn/login/verify")
-    if request.path not in public_paths and not session.get("user"):
+    g.account = users.get(session['user']) if session.get('user') else None
+    if request.path not in public_paths and not g.account:
         # No session cookie at all = someone hitting a protected route
         # directly (not just a normal logged-out browser tab), worth a
         # persistent record alongside the login-side logging below.
         access_log.log_event("unauthenticated_request", "unknown", request.path)
         return jsonify(error="authentication required"),401
+    if request.path.startswith('/admin/') and (not g.account or g.account['role'] != 'admin'):
+        return jsonify(error='Administrator access required.'),403
+
+@app.after_request
+def private_response(response):
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+@app.get('/admin/users')
+def admin_users():
+    return jsonify(profile=profile, users=users.list_for_admin())
+
+@app.post('/admin/users')
+def admin_create_user():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error='Invalid request.'),400
+    try:
+        username = users.create(data.get('username'), data.get('password'), data.get('role', 'operator'))
+    except ValueError as exc:
+        return jsonify(error=str(exc)),400
+    access_log.log_event('account_created', session['user'], username)
+    return jsonify(ok=True, username=username),201
 
 @app.get("/health")
 def health():
@@ -98,7 +124,8 @@ def login():
     if not isinstance(data,dict):
         return jsonify(error="invalid request"),400
     username,password=data.get("username"),data.get("password")
-    if not isinstance(password,str) or username!=auth["user"] or not check_password_hash(auth["password_hash"],password):
+    account = users.verify(username, password)
+    if not account:
         # Don't log the submitted password, only the attempted username —
         # same reasoning as not revealing which part (user or password)
         # was wrong in the response above: avoid turning the log itself
@@ -107,7 +134,7 @@ def login():
         return jsonify(error="invalid credentials"),401
     access_log.log_event("login_success", username, "")
     session.clear()
-    session["user"]=username
+    session["user"]=account['username']
     session.permanent=True
     return jsonify(ok=True)
 
@@ -119,7 +146,7 @@ def logout():
 @app.get("/snapshot")
 def snapshot():
     with guard:
-        return jsonify(profile=profile,application_policy=os.environ.get("COMMAND_POLICY","full"),connected=connected,messages=messages,events=list(events),server_time=time.time())
+        return jsonify(profile=profile,user=g.account,application_policy=os.environ.get("COMMAND_POLICY","full"),connected=connected,messages=messages,events=list(events),server_time=time.time())
 
 @app.post("/command")
 def command():
@@ -159,6 +186,8 @@ def report():
 def access_log_view():
     # Protected the same way every other route here is: before_request
     # already rejects this above if there's no session cookie.
+    if g.account['role'] != 'admin':
+        return jsonify(error='Administrator access required.'),403
     return jsonify(events=access_log.recent_events(limit=50))
 
 
@@ -183,19 +212,20 @@ def webauthn_register_options():
     # only an operator who already proved the password can add a passkey.
     options, challenge = webauthn_auth.build_registration_options(session["user"])
     session["webauthn_challenge"] = challenge
+    webauthn_auth.save_challenge(challenge, 'register', session['user'])
     return app.response_class(options_to_json(options), mimetype="application/json")
 
 
 @app.post("/webauthn/register/verify")
 def webauthn_register_verify():
     challenge = session.pop("webauthn_challenge", None)
-    if not challenge:
+    if not challenge or not webauthn_auth.consume_challenge(challenge, 'register', session['user']):
         return jsonify(error="no passkey setup in progress"), 400
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify(error="invalid request"), 400
     try:
-        webauthn_auth.verify_registration(data, challenge)
+        webauthn_auth.verify_registration(data, challenge, session['user'])
     except Exception as exc:
         access_log.log_event("webauthn_register_failed", session.get("user", "unknown"), str(exc)[:150])
         return jsonify(error="could not verify passkey"), 400
@@ -207,23 +237,25 @@ def webauthn_register_verify():
 def webauthn_login_options():
     options, challenge = webauthn_auth.build_authentication_options()
     session["webauthn_challenge"] = challenge
+    webauthn_auth.save_challenge(challenge, 'login')
     return app.response_class(options_to_json(options), mimetype="application/json")
 
 
 @app.post("/webauthn/login/verify")
 def webauthn_login_verify():
     challenge = session.pop("webauthn_challenge", None)
-    if not challenge:
+    if not challenge or not webauthn_auth.consume_challenge(challenge, 'login'):
         return jsonify(error="no passkey sign-in in progress"), 400
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify(error="invalid request"), 400
-    if not webauthn_auth.verify_authentication(data, challenge):
+    username = webauthn_auth.verify_authentication(data, challenge)
+    if not username or not users.get(username):
         access_log.log_event("webauthn_login_failed", "unknown", "")
         return jsonify(error="passkey verification failed"), 401
-    access_log.log_event("webauthn_login_success", auth["user"], "")
+    access_log.log_event("webauthn_login_success", username, "")
     session.clear()
-    session["user"] = auth["user"]
+    session["user"] = username
     session.permanent = True
     return jsonify(ok=True)
 

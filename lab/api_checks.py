@@ -3,11 +3,14 @@ import http.cookiejar
 import json
 import ssl
 import socket
+import getpass
+import os
 import urllib.error
 import urllib.request
 from pathlib import Path
 
-password=Path("/runtime/login.txt").read_text().split("Password: ",1)[1].strip()
+username=os.environ.get('LAB_TEST_USERNAME','admin')
+password=os.environ.get('LAB_TEST_PASSWORD') or getpass.getpass(f'Password for {username}: ')
 rows=[]
 def request(opener,url,data=None,headers=None):
     req=urllib.request.Request(url,data=json.dumps(data).encode() if data is not None else None,
@@ -24,7 +27,7 @@ for profile in ("baseline","hardened"):
         ("unauthenticated-read",request(opener,base+"/snapshot")[0]==401),
         ("unauthenticated-command",request(opener,base+"/command",{"cmd":"UNLOCK"})[0]==401),
         ("wrong-login",request(opener,base+"/login",{"username":"admin","password":"wrong"})[0]==401),
-        ("valid-login",request(opener,base+"/login",{"username":"admin","password":password})[0]==200),
+        ("valid-login",request(opener,base+"/login",{"username":username,"password":password})[0]==200),
         ("session-read",request(opener,base+"/snapshot")[0]==200),
         ("cross-site-command",request(opener,base+"/command",{"cmd":"LOCK"},{"Content-Type":"application/json","Sec-Fetch-Site":"cross-site"})[0]==403),
         ("invalid-command",request(opener,base+"/command",{"cmd":"OPEN"})[0]==400),

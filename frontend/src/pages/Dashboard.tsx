@@ -144,11 +144,15 @@ export default function Dashboard({ view = "home" }: { view?: "home" | "lab" }) 
               <Fingerprint size={16} /> Sign in with passkey
             </button>
           )}
-          <details className="credentials-help"><summary>Using the local lab?</summary><p>Your generated operator login is in <code>runtime/login.txt</code>. Each profile has its own authenticated session.</p></details>
+          <details className="credentials-help"><summary>Using the local lab?</summary><p>Use an account created by your administrator. Accounts and sessions are separate for Baseline and Hardened.</p></details>
         </form>
       </section> : <>
         <div className="connection-bar"><span className={`connection-indicator ${connected ? "connected" : ""}`}><span />{connected ? "Connected to your home" : "Reconnecting to your home"}</span>
           <span className="connection-caption">3 simulated devices · {profileTitle} profile</span><button className="quiet-button" disabled={busy} onClick={() => void lab.logout()}>Sign out <ArrowUpRight size={14} /></button></div>
+        {snapshot?.user && <div className="account-toolbar">
+          <p className="panel-description">Signed in as {snapshot.user.username} · {snapshot.user.role}</p>
+          {snapshot.user.role === 'admin' && <Link to="/users" className="secondary-button"><KeyRound size={16} /> Manage users <ArrowUpRight size={16} /></Link>}
+        </div>}
 
         {!passkeySetupDone && (
           <p role="status" className="notice notice-warning">
