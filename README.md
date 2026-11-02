@@ -140,3 +140,16 @@ The baseline and hardened network stacks are real, but the actuator is a softwar
 
 On Windows, ./test-ablation.ps1 runs the ablation and restores full controls in a finally block. The dashboard displays an ablation warning while the override is active.
 
+## Automated guided attack and packet-evidence demo
+
+Read [synopsis alignment and the eight-minute demo](docs/SYNOPSIS_ALIGNMENT_AND_DEMO.md)
+for the eight-attack/six-defense mapping, corrected claims, threat assumptions,
+and what the experiment still does not demonstrate.
+
+Run `.\run-guided-demo.ps1` from PowerShell with Docker Desktop running. It captures
+the actual Docker broker traffic, runs the three-level comparison, restores full
+hardening, and analyses the PCAPs with PyShark/TShark. View outcomes and packet
+evidence at `https://localhost:8443/lab`; open saved PCAPs in Wireshark.
+See [capture instructions](tools/CAPTURE_README.md) for evidence interpretation,
+artifact locations, and recovery after a forcibly interrupted run.
+

@@ -6,6 +6,7 @@ import math
 import sqlite3
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
@@ -87,8 +88,14 @@ class LockPolicy:
                 CREATE TABLE IF NOT EXISTS decisions(n INTEGER PRIMARY KEY, ts REAL, body TEXT, hash TEXT);
             """)
 
+    @contextmanager
     def connect(self):
-        return sqlite3.connect(self.path, timeout=10)
+        connection = sqlite3.connect(self.path, timeout=10)
+        try:
+            with connection:
+                yield connection
+        finally:
+            connection.close()
 
     def state(self):
         with self.connect() as db:

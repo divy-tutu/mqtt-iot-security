@@ -162,6 +162,14 @@ def access_log_view():
     return jsonify(events=access_log.recent_events(limit=50))
 
 
+@app.get('/guided-demo')
+def guided_demo_report():
+    path = Path('/results/guided-demo.json')
+    if not path.exists():
+        return jsonify(error='No guided demo yet'), 404
+    return app.response_class(path.read_text(), mimetype='application/json')
+
+
 @app.get("/webauthn/status")
 def webauthn_status():
     # Public (see protect() above) so the sign-in page can decide whether

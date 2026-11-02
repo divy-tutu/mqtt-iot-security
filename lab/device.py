@@ -7,6 +7,7 @@ from pathlib import Path
 import paho.mqtt.client as mqtt
 from security import CMD, EVENT, TOPICS, LockPolicy, sign
 from transport import client, start, publish
+from privacy import pad_envelope, camera_interval
 
 def main():
     who = os.environ["DEVICE"]
@@ -39,9 +40,12 @@ def main():
             data = {"temperature":round(temperature,2),"unit":"C"}
             interval = 2
         else:
-            data = {"status":"ONLINE","motion":tick % 15 in (5,6)}
-            interval = 2
-        publish(c, TOPICS[who], sign("/identity/signing.pem",who,TOPICS[who],data), retain=True)
+            data = {"status":"ONLINE","motion":int(time.time() // 8) % 2 == 1}
+            interval = camera_interval(data['motion'], profile == 'hardened')
+        payload = sign("/identity/signing.pem",who,TOPICS[who],data)
+        if who == 'camera' and profile == 'hardened':
+            payload = pad_envelope(payload)
+        publish(c, TOPICS[who], payload, retain=True)
         tick += 1
         send_lock.wait(interval)
         send_lock.clear()

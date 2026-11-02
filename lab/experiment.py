@@ -129,7 +129,7 @@ def run_profile(profile,repeat):
         tampered["msg"]=compact(body)
         trial("modified-payload",compact(tampered),expected="bad-signature" if profile=="hardened" else "accepted")
         trial("stale-command",envelope(ts=time.time()-60),expected="stale-timestamp" if profile=="hardened" else "accepted")
-        trial("invalid-command-schema",envelope(data={"cmd":"OPEN"}),expected="command-schema")
+        trial("invalid-command-schema",envelope("OPEN"),expected="command-schema")
         trial("malformed-envelope","[]",expected="malformed-envelope")
         trial("retained-command",envelope(),expected="retained-command" if profile=="hardened" else "accepted",retain=True)
         # Remove our retained fixture; empty payload rejection is expected but not scored.

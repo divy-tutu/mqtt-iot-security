@@ -1,5 +1,10 @@
 # Project redesign and lab defence
 
+The [2 November synopsis cross-check and demo guide](SYNOPSIS_ALIGNMENT_AND_DEMO.md)
+updates this earlier design with the eight-attack/six-defense matrix, camera
+traffic shaping, independently verifiable audit segments, and automated packet
+evidence. Its stated limitations apply to those newer demonstrations.
+
 ## The claim to defend
 
 **Suggested title:** Reproducible MQTT Security Evaluation with Compromised Device Containment and Durable Command Verification

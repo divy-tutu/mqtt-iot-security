@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Activity, ArrowRight, ArrowUpRight, Check, Download, Fingerprint, KeyRound, Lock, ShieldAlert, ShieldCheck, Thermometer, Camera, Unlock, VideoOff } from "lucide-react";
 import { Layout } from "@/components/Layout";
+import { GuidedDemo } from "@/components/GuidedDemo";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useMode } from "@/lib/mode";
 import { useLab, type DeviceRecord, type Report } from "@/hooks/useLab";
@@ -192,6 +193,7 @@ export default function Dashboard({ view = "home" }: { view?: "home" | "lab" }) 
         </div>
 
         {technical ? <>
+          <GuidedDemo profile={profile} />
           <section className="lab-panel">
             <div className="panel-heading"><div><p className="eyebrow">Live verification</p><h2>Every decision has a story.</h2></div><Activity size={21} strokeWidth={1.4} /></div>
             <p className="panel-description">Signed lock receipts show what happened. Gateway verification failures appear separately.</p>
@@ -201,7 +203,7 @@ export default function Dashboard({ view = "home" }: { view?: "home" | "lab" }) 
             </table>{!snapshot?.events.length && <p className="empty-message">No decisions yet. Send a command or run an experiment.</p>}</div>
           </section>
           <Evidence report={report} />
-          <p className="lab-scope">Local simulated devices · Browser access uses loopback HTTP; hardened MQTT uses TLS. Signed receipts identify keys, not people. Traffic analysis, firmware security, and Internet-scale DoS are outside this demo.</p>
+          <p className="lab-scope">Local simulated devices · Browser access uses loopback HTTPS; hardened MQTT uses TLS. Signed receipts identify keys, not people. Packet captures demonstrate transport visibility. Firmware security and Internet-scale DoS are outside this demo.</p>
         </> : <section className="recent-activity">
           <div className="section-heading"><h2>Around the home.</h2><Link to="/lab" className="text-link">View full activity <ArrowUpRight size={14} /></Link></div>
           {latest.length ? latest.map((event, index) => <div className="activity-row" key={`${event.received}-${index}`}><span className="activity-icon">{event.data.accepted ? <Lock size={16} /> : <ShieldAlert size={16} />}</span><div><p>{event.data.accepted ? `Front door ${event.data.state?.toLowerCase()}` : "A command was not executed"}</p><span>{event.verified ? "Confirmed by the lock" : "Gateway verification"} · {readable(event.data.reason)}</span></div><time>{new Date(event.received * 1000).toLocaleTimeString()}</time></div>) : <p className="empty-message">Your device confirmations will appear here.</p>}

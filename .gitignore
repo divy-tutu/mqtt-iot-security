@@ -1,6 +1,7 @@
 .venv/
 captures/
 *.pcap
+*.pcapng
 __pycache__/
 *.pyc
 broker/certs/

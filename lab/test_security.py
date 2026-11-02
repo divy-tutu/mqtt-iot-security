@@ -6,7 +6,9 @@ import unittest
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from security import CMD, LockPolicy, authenticate, compact, sign
+from security import CMD, EVENT, LockPolicy, authenticate, compact, sign
+from privacy import pad_envelope
+from audit_proof import verify_segment
 
 class SecurityTests(unittest.TestCase):
     def setUp(self):
@@ -78,6 +80,28 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(second["actions"],self.policy.state()["actions"])
     def test_packet_cap(self):
         self.assertEqual(self.policy.process("x"*4097)["reason"],"payload-too-large")
+
+    def test_padding_preserves_signature_and_fixed_length(self):
+        payload = self.command()
+        padded = pad_envelope(payload)
+        self.assertEqual(len(padded.encode()), 1024)
+        self.assertEqual(authenticate(payload, CMD, 'operator', self.public), authenticate(padded, CMD, 'operator', self.public))
+        with self.assertRaises(ValueError):
+            pad_envelope(payload, size=1)
+
+    def test_historical_receipt_proof_detects_edit_and_truncation(self):
+        decisions = [self.policy.process(self.command()) for _ in range(2)]
+        receipts = [sign(self.private, 'lock', EVENT, d) for d in decisions]
+        anchor = {k: decisions[-1][k] for k in ('n', 'hash')}
+        self.assertTrue(verify_segment(receipts, self.public, anchor))
+        with self.assertRaises(ValueError):
+            verify_segment(receipts[:-1], self.public, anchor)
+        altered = json.loads(receipts[-1])
+        body = json.loads(altered['msg'])
+        body['data']['state'] = 'FALSE-STATE'
+        altered['msg'] = compact(body)
+        with self.assertRaises(ValueError):
+            verify_segment(receipts[:-1] + [compact(altered)], self.public, anchor)
 
 if __name__=="__main__":
     unittest.main()
