@@ -4,12 +4,14 @@ import json
 import os
 import threading
 import time
+import urllib.request
 from pathlib import Path
 from flask import Flask, jsonify, request, session, g
 from users import UserStore
 from security import CMD, EVENT, TOPICS, authenticate, decode, sign
 from transport import client, start, publish
 import access_log
+import camera_source
 import webauthn_auth
 from webauthn import options_to_json
 
@@ -106,6 +108,64 @@ def admin_create_user():
     access_log.log_event('account_created', session['user'], username)
     return jsonify(ok=True, username=username),201
 
+@app.get('/admin/camera-source')
+def admin_get_camera_source():
+    return jsonify(source=camera_source.get_source())
+
+@app.post('/admin/camera-source')
+def admin_set_camera_source():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error='Invalid request.'),400
+    base_url = data.get('base_url')
+    if not base_url:
+        camera_source.clear_source()
+        access_log.log_event('camera_source_cleared', session['user'], '')
+        return jsonify(ok=True, source=None)
+    try:
+        record = camera_source.set_source(base_url)
+    except camera_source.SourceError as exc:
+        return jsonify(error=str(exc)),400
+    access_log.log_event('camera_source_set', session['user'], record['base_url'])
+    return jsonify(ok=True, source=record)
+
+def _proxy_phone_camera(kind):
+    # The URL is re-validated against the SSRF guard inside resolve_endpoint
+    # on every call, not only when the operator first saved it.
+    try:
+        url = camera_source.resolve_endpoint(kind)
+    except camera_source.SourceError as exc:
+        return jsonify(error=str(exc)),400
+    if not url:
+        return jsonify(error='No phone camera configured.'),404
+    try:
+        upstream = urllib.request.urlopen(
+            urllib.request.Request(url, headers={'User-Agent': 'mqtt-lab-gateway'}),
+            timeout=camera_source.FETCH_TIMEOUT)
+    except OSError:
+        return jsonify(error='The phone camera is not reachable.'),502
+    content_type = upstream.headers.get('Content-Type', 'application/octet-stream')
+    def body():
+        try:
+            while True:
+                chunk = upstream.read(8192)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            upstream.close()
+    return app.response_class(body(), content_type=content_type)
+
+@app.get('/camera/stream')
+def camera_stream():
+    # Authenticated by before_request like every other non-public route:
+    # only a signed-in operator can view the home camera feed.
+    return _proxy_phone_camera('video')
+
+@app.get('/camera/snapshot')
+def camera_snapshot():
+    return _proxy_phone_camera('snapshot')
+
 @app.get("/health")
 def health():
     return jsonify(connected=connected,profile=profile),200 if connected else 503
@@ -146,7 +206,7 @@ def logout():
 @app.get("/snapshot")
 def snapshot():
     with guard:
-        return jsonify(profile=profile,user=g.account,application_policy=os.environ.get("COMMAND_POLICY","full"),connected=connected,messages=messages,events=list(events),server_time=time.time())
+        return jsonify(profile=profile,user=g.account,application_policy=os.environ.get("COMMAND_POLICY","full"),connected=connected,messages=messages,events=list(events),server_time=time.time(),camera_source=bool(camera_source.get_source()))
 
 @app.post("/command")
 def command():

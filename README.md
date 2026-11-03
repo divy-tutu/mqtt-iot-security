@@ -56,6 +56,29 @@ The HTTPS certificate is issued by the lab CA at `runtime/public/ca.crt` and is 
 
 The setup is idempotent: it keeps identities and passwords. On Linux/Git Bash use `bash setup-hardened.sh`. Internet access is required for the first image build. After provisioning, `docker compose up -d --wait` starts the paired experiment. `docker-compose.hardened.yml` is a compatibility entrypoint for the same paired stack.
 
+### Live phone camera (optional)
+
+The security-camera card can show a real feed from your Android or iPhone instead
+of the still image or the local webcam. Install any IP-webcam app on the phone
+(for example "IP Webcam" on Android, or "DroidCam"/"iVCam" on iOS) and start it so
+it serves video on your Wi-Fi at an address like `http://192.168.1.42:8080`. The
+default endpoints are `/video` (MJPEG) and `/shot.jpg` (snapshot); apps that match
+those work with no further configuration.
+
+Sign in as an administrator, open the camera card on the dashboard, expand **Phone
+camera** and enter the phone's base URL. The phone and the PC must be on the same
+Wi-Fi. Because the dashboard is HTTPS and the phone serves plain HTTP, the gateway
+proxies the stream (`/camera/stream`) so the browser never loads mixed content; the
+feed is visible only to a signed-in operator. The camera device also pulls snapshots
+to set its signed `status` (ONLINE/OFFLINE) and a decode-free `motion` estimate, so
+the real feed and the MQTT telemetry stay connected. With no phone configured, the
+camera falls back to the original simulation and nothing else changes.
+
+The phone URL is operator-supplied, so the gateway only accepts private LAN
+addresses: loopback, link-local (including the `169.254.169.254` metadata address)
+and public addresses are rejected, and the address is re-checked before every fetch.
+This is an SSRF guard for a local lab, not a hardened reverse proxy.
+
 ~~~powershell
 # Bounded, local experiment: 3 repetitions, alternating profile order
 docker compose --profile test run --rm experiment

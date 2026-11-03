@@ -4,7 +4,8 @@ import { base64urlToBuffer, bufferToBase64url } from "@/lib/webauthn";
 
 export type Decision = { accepted?: boolean; reason?: string; state?: string; actions?: number; command_id?: string; n?: number };
 export type DeviceRecord = { topic: string; data: Decision & { temperature?: number; status?: string; motion?: boolean }; received: number; verified: boolean };
-export type Snapshot = { user?: { username: string; role: 'admin' | 'operator' }; application_policy?: string; connected: boolean; messages: Record<string, DeviceRecord>; events: DeviceRecord[]; server_time: number };
+export type Snapshot = { user?: { username: string; role: 'admin' | 'operator' }; application_policy?: string; connected: boolean; messages: Record<string, DeviceRecord>; events: DeviceRecord[]; server_time: number; camera_source?: boolean };
+export type CameraSource = { base_url: string } | null;
 export type ReportRow = { profile: string; scenario: string; repeat: number; expectation_met: boolean; outcome: string; median_ms?: number; p95_ms?: number };
 export type Report = { created_utc: string; rows: ReportRow[]; all_expectations_met: boolean; error?: string };
 
@@ -102,6 +103,32 @@ export function useLab(profile: SecurityMode, includeReport: boolean) {
       }
     } catch (e) { if (current === generation.current) setError((e as Error).message); }
     finally { if (current === generation.current) setBusy(false); }
+  }
+
+  // --- Phone camera source (admin-configured) -------------------------
+
+  async function getCameraSource(): Promise<CameraSource> {
+    try {
+      const res = await fetch(`${base}/admin/camera-source`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return (data.source as CameraSource) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function setCameraSource(baseUrl: string | null) {
+    setBusy(true); setError("");
+    try {
+      await post("admin/camera-source", { base_url: baseUrl });
+      return true;
+    } catch (e) {
+      setError((e as Error).message);
+      return false;
+    } finally {
+      setBusy(false);
+    }
   }
 
   // --- WebAuthn / passkey ---------------------------------------------
@@ -210,5 +237,6 @@ export function useLab(profile: SecurityMode, includeReport: boolean) {
   return {
     snapshot, report, session, error, networkError, busy, pending,
     login, command, logout, webauthnStatus, registerPasskey, loginWithPasskey,
+    getCameraSource, setCameraSource, cameraStreamUrl: `${base}/camera/stream`,
   };
 }

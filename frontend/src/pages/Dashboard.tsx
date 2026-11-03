@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ArrowRight, ArrowUpRight, Check, Download, Fingerprint, KeyRound, Lock, ShieldAlert, ShieldCheck, Thermometer, Camera, Unlock, VideoOff } from "lucide-react";
+import { Activity, ArrowRight, ArrowUpRight, Check, Download, Fingerprint, KeyRound, Lock, ShieldAlert, ShieldCheck, Smartphone, Thermometer, Camera, Unlock, VideoOff } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { GuidedDemo } from "@/components/GuidedDemo";
 import { LiveAttackDemo } from "@/components/LiveAttackDemo";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useMode } from "@/lib/mode";
-import { useLab, type DeviceRecord, type Report } from "@/hooks/useLab";
+import { useLab, type CameraSource, type DeviceRecord, type Report } from "@/hooks/useLab";
 import { useWebcam } from "@/hooks/useWebcam";
 import thermostatImage from "@/assets/thermostat.jpg";
 import cameraImage from "@/assets/security-camera.jpg";
@@ -18,7 +18,39 @@ const devices = [
 ];
 const readable = (value?: string) => value ? value.replace(/[-_]/g, " ") : "Awaiting data";
 
-function DeviceCard({ index, item, connected, technical }: { index: number; item?: DeviceRecord; connected: boolean; technical: boolean }) {
+type CameraControls = {
+  streamUrl: string;
+  configured: boolean;
+  isAdmin: boolean;
+  busy: boolean;
+  getSource: () => Promise<CameraSource>;
+  setSource: (url: string | null) => Promise<boolean>;
+};
+
+// Admin-only disclosure for pointing the camera at a phone running an
+// IP-webcam app on the same Wi-Fi. The gateway validates and stores the URL;
+// the camera device then derives its signed status/motion telemetry from it.
+function PhoneCameraConfig({ configured, busy, getSource, setSource }: Omit<CameraControls, "streamUrl" | "isAdmin">) {
+  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    if (open && !loaded) void getSource().then(source => { if (source) setUrl(source.base_url); setLoaded(true); });
+  }, [open, loaded, getSource]);
+  return (
+    <details className="phone-camera-config" onToggle={event => setOpen((event.target as HTMLDetailsElement).open)}>
+      <summary><Smartphone size={13} /> Phone camera {configured ? "· connected" : "· not set"}</summary>
+      <p className="phone-camera-hint">Run an IP-webcam app on your phone (same Wi-Fi) and enter its address, e.g. <code>http://192.168.1.42:8080</code>.</p>
+      <div className="phone-camera-row">
+        <input value={url} inputMode="url" placeholder="http://192.168.1.42:8080" onChange={event => setUrl(event.target.value)} />
+        <button type="button" className="secondary-button" disabled={busy || !url.trim()} onClick={() => void setSource(url.trim())}>Save</button>
+      </div>
+      {configured && <button type="button" className="text-link" disabled={busy} onClick={() => { void setSource(null); setUrl(""); }}>Remove phone camera</button>}
+    </details>
+  );
+}
+
+function DeviceCard({ index, item, connected, technical, camera }: { index: number; item?: DeviceRecord; connected: boolean; technical: boolean; camera?: CameraControls }) {
   const device = devices[index];
   const Icon = device.icon;
   const isCamera = index === 2;
@@ -26,31 +58,61 @@ function DeviceCard({ index, item, connected, technical }: { index: number; item
   // real webcam once turnOn() is actually invoked, which only happens from
   // the toggle button rendered on the camera card below.
   const webcam = useWebcam();
+  // Camera feed source: "off" shows the still image, "phone" shows the proxied
+  // phone MJPEG stream, "device" shows this machine's local webcam.
+  const [source, setSource] = useState<"off" | "phone" | "device">("off");
+  const [streamError, setStreamError] = useState(false);
+  // Auto-show the phone feed once a phone camera is configured, unless the
+  // viewer has deliberately switched to this machine's webcam.
+  useEffect(() => {
+    if (camera?.configured) setSource(current => (current === "device" ? current : "phone"));
+    else setSource(current => (current === "phone" ? "off" : current));
+  }, [camera?.configured]);
   const age = item ? Math.max(0, Date.now() / 1000 - item.received) : Infinity;
   const live = connected && age <= 6;
   const value = !item ? "—" : index === 0 ? `${item.data.temperature}°` : index === 1 ? item.data.state === "LOCKED" ? "Locked" : item.data.state === "UNLOCKED" ? "Unlocked" : "Unknown" : item.data.status === "ONLINE" ? "Online" : item.data.status;
+  const showPhone = isCamera && source === "phone" && Boolean(camera?.configured) && !streamError;
+  const showDevice = isCamera && source === "device" && webcam.active;
+  function choosePhone() {
+    setStreamError(false);
+    if (webcam.active) webcam.turnOff();
+    setSource(current => (current === "phone" ? "off" : "phone"));
+  }
+  function chooseDevice() {
+    setStreamError(false);
+    if (webcam.active) { webcam.turnOff(); setSource(camera?.configured ? "phone" : "off"); }
+    else { void webcam.turnOn(); setSource("device"); }
+  }
   return <article className="home-device-card">
     <div className={`device-visual ${device.image ? "" : "lock-visual"}`}>
-      {isCamera && webcam.active
+      {showPhone
+        ? <img className="camera-stream" src={camera!.streamUrl} alt="Live phone camera feed" onError={() => setStreamError(true)} />
+        : showDevice
         ? <video ref={webcam.videoRef} autoPlay playsInline muted aria-label="Your live webcam feed" />
         : device.image ? <img src={device.image} alt={device.description} /> : <div className="door-illustration" aria-hidden="true"><div className="door-panel"><div className="lock-hardware"><span className="lock-led" /><Lock size={26} strokeWidth={1.2} /><div className="door-handle" /></div></div></div>}
       <span className={`device-status ${live ? "is-live" : ""}`}><span />{live ? "Live" : item ? "Stale" : "Waiting"}</span>
       <span className="device-visual-label"><Icon size={14} />{device.description}</span>
       {isCamera && (
-        <button
-          type="button"
-          className="webcam-toggle-button"
-          onClick={() => void (webcam.active ? webcam.turnOff() : webcam.turnOn())}
-        >
-          {webcam.active ? <><VideoOff size={13} /> Turn off</> : <><Camera size={13} /> Turn on</>}
-        </button>
+        <div className="camera-source-switch">
+          {camera?.configured && (
+            <button type="button" className="webcam-toggle-button" onClick={choosePhone}>
+              <Smartphone size={13} /> {source === "phone" ? "Phone ●" : "Phone"}
+            </button>
+          )}
+          <button type="button" className="webcam-toggle-button" onClick={chooseDevice}>
+            {webcam.active ? <><VideoOff size={13} /> Stop</> : <><Camera size={13} /> Webcam</>}
+          </button>
+        </div>
       )}
     </div>
     <div className="device-information">
       <div className="flex items-end justify-between gap-3"><div><p className="eyebrow">{device.name}</p><p className="device-value">{value}<span>{item && index === 0 ? "C" : ""}</span></p></div><Icon size={22} strokeWidth={1.3} className="text-muted-foreground mb-3" /></div>
       <div className="device-verification">{item?.verified ? <><ShieldCheck size={14} /> Verified reading</> : <><ShieldAlert size={14} /> {item ? "Unverified reading" : "No reading yet"}</>}
         <span>{Number.isFinite(age) ? `${Math.round(age)}s ago` : ""}</span></div>
+      {isCamera && showPhone && item?.data.motion && <p className="device-motion"><Activity size={13} /> Motion detected</p>}
+      {isCamera && streamError && <p className="device-webcam-error">Couldn’t load the phone feed. Check the IP-webcam app is running and on the same Wi-Fi.</p>}
       {isCamera && webcam.error && <p className="device-webcam-error">{webcam.error}</p>}
+      {isCamera && camera?.isAdmin && <PhoneCameraConfig configured={camera.configured} busy={camera.busy} getSource={camera.getSource} setSource={camera.setSource} />}
       {technical && <div className="device-technical"><code>{device.topic}</code>{index === 1 && <p>Executed actions: {item?.data.actions ?? "—"}</p>}</div>}
     </div>
   </article>;
@@ -95,6 +157,8 @@ export default function Dashboard({ view = "home" }: { view?: "home" | "lab" }) 
   const connected = Boolean(snapshot?.connected);
   const profileTitle = secure ? "Hardened" : "Baseline";
   const signedIn = session === "authenticated";
+  const isAdmin = snapshot?.user?.role === "admin";
+  const cameraConfigured = Boolean(snapshot?.camera_source);
   const latest = snapshot?.events.slice(0, 3) ?? [];
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -177,7 +241,8 @@ export default function Dashboard({ view = "home" }: { view?: "home" | "lab" }) 
         </section>}
 
         <div className="section-heading"><h2>{technical ? "Live device state" : "Your home, at a glance."}</h2><span className="text-xs text-muted-foreground">Updates every few seconds</span></div>
-        <section className="home-device-grid" aria-label="Live devices">{devices.map((device, index) => <DeviceCard key={device.topic} index={index} item={snapshot?.messages[device.topic]} connected={connected} technical={technical} />)}</section>
+        <section className="home-device-grid" aria-label="Live devices">{devices.map((device, index) => <DeviceCard key={device.topic} index={index} item={snapshot?.messages[device.topic]} connected={connected} technical={technical}
+          camera={index === 2 ? { streamUrl: lab.cameraStreamUrl, configured: cameraConfigured, isAdmin: Boolean(isAdmin), busy, getSource: lab.getCameraSource, setSource: lab.setCameraSource } : undefined} />)}</section>
 
         <div className="control-grid">
           <section className="door-control">

@@ -57,11 +57,14 @@ services:
       MQTT_HOST: baseline-broker
     depends_on:
       baseline-broker: {condition: service_healthy}
-    networks: [baseline]
+    # 'edge' is a non-internal network so the camera can reach an optional phone
+    # IP-webcam on the home LAN; MQTT still rides the internal broker network.
+    networks: [baseline, edge]
     volumes:
       - ./runtime/camera:/identity:ro
       - ./runtime/public:/public:ro
       - baseline-camera-data:/data
+      - baseline-camera-config:/config
 
   baseline-lock:
     <<: *app
@@ -94,6 +97,9 @@ services:
       - ./runtime/gateway-auth:/auth:ro
       - ./results:/results:ro
       - baseline-gateway-data:/data
+      # Shared with baseline-camera: the gateway writes the phone camera URL
+      # (admin only) and proxies its feed; the camera reads it for telemetry.
+      - baseline-camera-config:/config
 
     ports: ["127.0.0.1:8081:8000"]
     healthcheck:
@@ -147,11 +153,12 @@ services:
       MQTT_HOST: hardened-broker
     depends_on:
       hardened-broker: {condition: service_healthy}
-    networks: [hardened]
+    networks: [hardened, edge]
     volumes:
       - ./runtime/camera:/identity:ro
       - ./runtime/public:/public:ro
       - hardened-camera-data:/data
+      - hardened-camera-config:/config
 
   hardened-lock:
     <<: *app
@@ -184,6 +191,7 @@ services:
       - ./runtime/gateway-auth:/auth:ro
       - ./results:/results:ro
       - hardened-gateway-data:/data
+      - hardened-camera-config:/config
 
     ports: ["127.0.0.1:8082:8000"]
     healthcheck:
@@ -219,12 +227,17 @@ networks:
   baseline: {internal: true}
   hardened: {internal: true}
   web: {}
+  # LAN egress for the cameras to reach an optional phone IP-webcam. Does not
+  # connect to either broker, so profile isolation of MQTT traffic is kept.
+  edge: {}
 volumes:
   baseline-sensor-data:
   baseline-camera-data:
+  baseline-camera-config:
   baseline-lock-data:
   baseline-gateway-data:
   hardened-sensor-data:
   hardened-camera-data:
+  hardened-camera-config:
   hardened-lock-data:
   hardened-gateway-data:
