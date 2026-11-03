@@ -79,6 +79,19 @@ addresses: loopback, link-local (including the `169.254.169.254` metadata addres
 and public addresses are rejected, and the address is re-checked before every fetch.
 This is an SSRF guard for a local lab, not a hardened reverse proxy.
 
+On an ordinary shared Wi-Fi router the gateway container reaches the phone
+directly. On an iPhone Personal Hotspot (a `172.20.10.0/28` subnet), Docker
+Desktop's Linux VM cannot route to that subnet even though the Windows host can.
+For that case, run the bundled host relay and point the phone-camera URL at it:
+
+~~~powershell
+python tools/camera_relay.py http://<phone-ip>:8080 9099
+# then set the dashboard phone-camera URL to http://host.docker.internal:9099
+~~~
+
+Keep the relay running during use; restart it if the PC sleeps or the phone's IP
+changes. The relay binds `127.0.0.1`, so no firewall rule is needed.
+
 ~~~powershell
 # Bounded, local experiment: 3 repetitions, alternating profile order
 docker compose --profile test run --rm experiment
