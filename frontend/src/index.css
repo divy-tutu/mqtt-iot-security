@@ -513,6 +513,24 @@
 .guided-demo .lab-table th, .guided-demo .lab-table td { padding: 14px 12px; vertical-align: top; overflow-wrap: anywhere; line-height: 1.5; }
 .guided-demo .lab-table th:first-child { width: 26%; }
 .guided-demo .result-label { white-space: normal; }
+.attack-parameters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+.attack-parameters span { padding: 7px 10px; border: 1px solid hsl(var(--border)); border-radius: 5px; background: #f8f4ed; color: hsl(var(--muted-foreground)); font-size: 11px; }
+.live-attack-demo > .primary-button { margin-bottom: 20px; }
+.live-attack-demo .notice { margin-top: 0; }
+.live-attack-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.attack-result-card { padding: 20px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: #faf7f1; }
+.attack-result-card.compromised { border-color: #d9b98e; background: #fff8e9; }
+.attack-result-card.blocked { border-color: #b8c9ae; background: #f4f8ef; }
+.attack-result-card h3 { margin: 9px 0 12px; font-family: var(--font-serif); font-size: 18px; }
+.attack-result-card p { margin: 6px 0; color: hsl(var(--muted-foreground)); font-size: 12px; }
+.attack-door-state { display: inline-flex; padding: 10px; border-radius: 50%; color: hsl(var(--primary)); background: #efe8dc; }
+.attack-result-card.blocked .attack-door-state { color: #53674b; background: #e5eddf; }
+.attack-result-card .result-label { align-items: center; gap: 6px; margin-top: 10px; }
+.attack-result-card .attack-parameters { margin: 12px 0 0; }
+.attack-selector { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
+.attack-selector button { padding: 9px 12px; border: 1px solid hsl(var(--border)); border-radius: 5px; color: hsl(var(--muted-foreground)); background: #faf7f1; font-size: 11px; }
+.attack-selector button.is-active { color: #fffaf3; border-color: hsl(var(--primary)); background: hsl(var(--primary)); }
+.attack-selector button:disabled { opacity: .55; cursor: wait; }
 .guided-demo details { margin-top: 6px; }
 .guided-demo summary { cursor: pointer; color: #786b58; }
 .guided-demo h3 { margin: 18px 0 12px; font-size: 19px; }
@@ -536,6 +554,7 @@
   .security-summary > .round-icon { right: 16px; }
 }
 @media (max-width: 700px) {
+  .live-attack-grid { grid-template-columns: 1fr; }
   .site-navigation { height: 64px; gap: 12px; }
   .site-brand { font-size: 27px; gap: 5px; }
   .site-links { gap: 15px; font-size: 11px; }

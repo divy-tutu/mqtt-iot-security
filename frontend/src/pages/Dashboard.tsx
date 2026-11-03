@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Activity, ArrowRight, ArrowUpRight, Check, Download, Fingerprint, KeyRound, Lock, ShieldAlert, ShieldCheck, Thermometer, Camera, Unlock, VideoOff } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { GuidedDemo } from "@/components/GuidedDemo";
+import { LiveAttackDemo } from "@/components/LiveAttackDemo";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useMode } from "@/lib/mode";
 import { useLab, type DeviceRecord, type Report } from "@/hooks/useLab";
@@ -197,6 +198,7 @@ export default function Dashboard({ view = "home" }: { view?: "home" | "lab" }) 
         </div>
 
         {technical ? <>
+          <LiveAttackDemo profile={profile} />
           <GuidedDemo profile={profile} />
           <section className="lab-panel">
             <div className="panel-heading"><div><p className="eyebrow">Live verification</p><h2>Every decision has a story.</h2></div><Activity size={21} strokeWidth={1.4} /></div>

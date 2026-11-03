@@ -171,6 +171,7 @@ def command():
     # PUBACK is transport evidence only; the signed device event confirms execution.
     return jsonify(status="published-await-device-decision",command_id=decode(payload)[1]["id"]),202
 
+
 start(c)
 
 
@@ -196,6 +197,14 @@ def guided_demo_report():
     path = Path('/results/guided-demo.json')
     if not path.exists():
         return jsonify(error='No guided demo yet'), 404
+    return app.response_class(path.read_text(), mimetype='application/json')
+
+
+@app.get('/local-attack')
+def local_attack_report():
+    path = Path('/results/latest-local-attack.json')
+    if not path.exists():
+        return jsonify(error='No local attack has been run yet.'),404
     return app.response_class(path.read_text(), mimetype='application/json')
 
 
